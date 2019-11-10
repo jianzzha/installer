@@ -24,7 +24,6 @@ module "bootstrap" {
   base_volume_id = module.volume.coreos_base_volume_id
   cluster_id     = var.cluster_id
   ignition       = var.ignition_bootstrap
-  network_id     = libvirt_network.net.id
   pool           = libvirt_pool.storage_pool.name
 }
 
@@ -41,48 +40,6 @@ resource "libvirt_ignition" "master" {
   pool    = libvirt_pool.storage_pool.name
 }
 
-resource "libvirt_network" "net" {
-  name = var.cluster_id
-
-  mode   = "nat"
-  bridge = var.libvirt_network_if
-
-  domain = var.cluster_domain
-
-  addresses = [var.machine_cidr]
-
-  dns {
-    local_only = true
-
-    dynamic "srvs" {
-      for_each = data.libvirt_network_dns_srv_template.etcd_cluster.*.rendered
-      content {
-        domain   = srvs.value.domain
-        port     = srvs.value.port
-        protocol = srvs.value.protocol
-        service  = srvs.value.service
-        target   = srvs.value.target
-        weight   = srvs.value.weight
-      }
-    }
-
-    dynamic "hosts" {
-      for_each = concat(
-        data.libvirt_network_dns_host_template.bootstrap.*.rendered,
-        data.libvirt_network_dns_host_template.bootstrap_int.*.rendered,
-        data.libvirt_network_dns_host_template.masters.*.rendered,
-        data.libvirt_network_dns_host_template.masters_int.*.rendered,
-        data.libvirt_network_dns_host_template.etcds.*.rendered,
-      )
-      content {
-        hostname = hosts.value.hostname
-        ip       = hosts.value.ip
-      }
-    }
-  }
-
-  autostart = true
-}
 
 resource "libvirt_domain" "master" {
   count = var.master_count
@@ -108,9 +65,8 @@ resource "libvirt_domain" "master" {
   }
 
   network_interface {
-    network_id = libvirt_network.net.id
-    hostname   = "${var.cluster_id}-master-${count.index}.${var.cluster_domain}"
-    addresses  = [var.libvirt_master_ips[count.index]]
+    bridge = "br-em1"
+    mac = "52:54:00:4e:f5:0${count.index+1}"
   }
 }
 

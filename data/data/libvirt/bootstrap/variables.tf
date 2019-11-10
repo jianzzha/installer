@@ -24,11 +24,6 @@ variable "ignition" {
   description = "The content of the bootstrap ignition file."
 }
 
-variable "network_id" {
-  type        = string
-  description = "The ID of a network resource containing the bootstrap node's addresses."
-}
-
 variable "pool" {
   type        = string
   description = "The name of the storage pool."
